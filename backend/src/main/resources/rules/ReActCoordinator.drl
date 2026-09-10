@@ -1,0 +1,81 @@
+package rules
+
+import io.freelance.kjm.react.facts.Goal;
+import io.freelance.kjm.react.facts.Action;
+import io.freelance.kjm.react.facts.ActionInput;
+import io.freelance.kjm.react.facts.Observation;
+import io.freelance.kjm.react.facts.Thought;
+import io.freelance.kjm.react.facts.Finished;
+import io.freelance.kjm.react.facts.Product;
+import io.freelance.kjm.react.facts.CurrencyExchange;
+import io.freelance.kjm.react.facts.ToolFact;
+
+global io.freelance.kjm.react.services.ToolExecutionService toolService;
+
+// =============================================================================
+// Rule 1: Initialize ReAct Goal
+// =============================================================================
+rule "Initialize ReAct Goal"
+    salience 100
+    when
+        $g : Goal(status == Goal.STATUS_INIT, $prod : product, $sess : sessionId)
+    then
+        System.out.println("[Drools Rule: Init] Initializing ReAct loop for session: " + $sess);
+        insert(new Thought($sess, 0, "Initializing ReAct goal coordination for: " + $prod));
+        modify($g) {
+            setStatus(Goal.STATUS_NEED_BASE_PRICE)
+        };
+end
+
+// =============================================================================
+// Rule 2: Dispatch Search Action for Base Hardware Price
+// =============================================================================
+rule "Dispatch Search Action for Base Hardware Price"
+    salience 90
+    when
+        $g : Goal(status == Goal.STATUS_NEED_BASE_PRICE, $prod : product, $sess : sessionId)
+    then
+        System.out.println("[Drools Rule: Need Base Price] Planning search action for product: " + $prod);
+        insert(new Thought($sess, 1, "I need to check retail search indices for starting MSRP of " + $prod + " in USD."));
+        insert(new Action($sess, 1, "duckduck", new ActionInput("current price of " + $prod + " in USD"), Action.STATUS_PENDING));
+        modify($g) {
+            setStatus(Goal.STATUS_AWAITING_SEARCH)
+        };
+end
+
+// =============================================================================
+// Rule 3: Process Search Observation and Plan Currency Conversion
+// =============================================================================
+rule "Process Search Observation and Plan Currency Conversion"
+    salience 80
+    when
+        $g : Goal(status == Goal.STATUS_AWAITING_SEARCH, $sess : sessionId, $rate : exchangeRate, $curr : targetCurrency, $prod : product)
+        $obs : Observation(sessionId == $sess, toolName == "duckduck", $price : extractedValue != null)
+    then
+        System.out.println("[Drools Rule: Search Received] Base price resolved to: $" + $price);
+        insert(new Thought($sess, 2, "Observed base MSRP is $" + $price + " USD. Target currency is " + $curr + " at rate " + $rate + ". I must calculate: " + $price + " * " + $rate));
+        insert(new Action($sess, 2, "Calculator", new ActionInput($price + " * " + $rate), Action.STATUS_PENDING));
+        modify($g) {
+            setStatus(Goal.STATUS_AWAITING_CONVERSION)
+        };
+end
+
+// =============================================================================
+// Rule 4: Conclude ReAct Goal with Final Converted Price
+// =============================================================================
+rule "Conclude ReAct Goal with Final Converted Price"
+    salience 70
+    when
+        $g : Goal(status == Goal.STATUS_AWAITING_CONVERSION, $sess : sessionId, $prod : product, $curr : targetCurrency, $rate : exchangeRate)
+        $calcObs : Observation(sessionId == $sess, toolName == "Calculator", $converted : extractedValue != null)
+        $searchObs : Observation(sessionId == $sess, toolName == "duckduck", $basePrice : extractedValue != null)
+    then
+        System.out.println("[Drools Rule: Finished] Formulating final answer: " + $converted + " " + $curr);
+        String answer = String.format("The current retail starting price for %s is $%.2f USD. At an exchange rate of %.4f, this equates to approximately %.2f %s.",
+                                      $prod, $basePrice, $rate, $converted, $curr);
+        insert(new Finished($sess, $prod, $basePrice, $curr, $rate, $converted, answer));
+        insert(new Thought($sess, 3, "Goal achieved. Formulated verified terminal pricing answer: " + answer));
+        modify($g) {
+            setStatus(Goal.STATUS_COMPLETED)
+        };
+end

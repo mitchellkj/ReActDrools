@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.18'
+    id 'io.spring.dependency-management' version '1.0.15.RELEASE'
+}
+
+group = 'io.freelance.kjm'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+def droolsVersion = '7.74.1.Final'
+
+dependencies {
+    // Spring Boot Starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Drools Rule Engine (Matches user local reference)
+    implementation "org.drools:drools-engine:${droolsVersion}"
+    implementation "org.drools:drools-mvel:${droolsVersion}"
+
+    // Jackson JSON Serializer
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+
+    // Logging
+    implementation 'org.slf4j:slf4j-api'
+
+    // Testing
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

@@ -1,0 +1,175 @@
+<div class="container">
+  <!-- Top Navigation / Header -->
+  <header class="mb-8">
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-gray-800">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">⚙️</span>
+          <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              ReAct Drools
+              <span class="badge badge-purple">Enterprise Rules Engine</span>
+            </h1>
+            <p class="text-sm text-gray-400 mt-0.5">
+              Neuro-Symbolic Reasoning Loop governed by <strong>Drools 7.74</strong> (Phreak Rete-OO) on <strong>Java 17 Spring Boot & Angular</strong>
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="badge" [ngClass]="backendHealthy ? 'badge-emerald' : 'badge-amber'">
+          <span class="inline-block w-2 h-2 rounded-full mr-1.5" [style.backgroundColor]="backendHealthy ? '#10b981' : '#f59e0b'"></span>
+          {{ backendInfo }}
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Grid -->
+  <main class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <!-- Left Column: Inquiry Parameters -->
+    <section class="lg:col-span-5 space-y-6">
+      <div class="card">
+        <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <span>🎯</span> Inquiry Parameters
+        </h2>
+
+        <!-- Product Selector -->
+        <div class="space-y-2 mb-4">
+          <label class="block text-xs font-medium uppercase tracking-wider text-gray-400">
+            Hardware Catalog Item
+          </label>
+          <select [(ngModel)]="selectedProduct" class="form-input">
+            <option *ngFor="let p of products" [value]="p.name">
+              {{ p.name }} ({{ p.brand }} &bull; {{ p.category }})
+            </option>
+          </select>
+        </div>
+
+        <!-- Target Currency -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div class="space-y-2">
+            <label class="block text-xs font-medium uppercase tracking-wider text-gray-400">
+              Target Currency
+            </label>
+            <select [(ngModel)]="selectedCurrency" (change)="onCurrencyChange()" class="form-input">
+              <option *ngFor="let c of currencies" [value]="c.code">
+                {{ c.code }} ({{ c.symbol }} - {{ c.name }})
+              </option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="block text-xs font-medium uppercase tracking-wider text-gray-400">
+              Exchange Rate
+            </label>
+            <input type="number" step="0.01" [(ngModel)]="exchangeRate" class="form-input" />
+          </div>
+        </div>
+
+        <!-- Action Button -->
+        <button (click)="executeCoordination()" [disabled]="loading" class="btn-primary w-full mt-2">
+          <span *ngIf="loading" class="spinner"></span>
+          <span *ngIf="!loading">🚀 Dispatch Drools Coordinator</span>
+          <span *ngIf="loading">Evaluating Working Memory...</span>
+        </button>
+
+        <!-- Help Notice -->
+        <p class="text-xs text-gray-500 mt-4 leading-relaxed">
+          The Drools engine initializes a stateful <code>KieSession</code>, asserts fact objects (<code>Goal</code>, <code>ToolFact</code>), evaluates beta memory joins, and fires forward-chaining production rules to supervise tool dispatch.
+        </p>
+      </div>
+
+      <!-- Architectural Context Card -->
+      <div class="card bg-gray-900/60 border-gray-800">
+        <h3 class="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-1.5">
+          <span>📚</span> Framework Provenance
+        </h3>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          Mirrors the ReAct agent control pattern from <em>Hands-On Large Language Models</em> (Alammar & Grootendorst, Ch. 7) implemented natively with enterprise Business Rules Engine technology.
+        </p>
+      </div>
+    </section>
+
+    <!-- Right Column: Results & Audit Timeline -->
+    <section class="lg:col-span-7 space-y-6">
+      <!-- Error Message -->
+      <div *ngIf="error" class="card bg-rose-950/40 border-rose-800/60 text-rose-200">
+        <p class="font-semibold text-sm">⚠️ Execution Alert</p>
+        <p class="text-xs mt-1 text-rose-300">{{ error }}</p>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!result && !loading && !error" class="card border-dashed border-gray-800 text-center py-16">
+        <span class="text-4xl block mb-3">⚡</span>
+        <h3 class="text-base font-medium text-gray-300">Awaiting Rule Agenda Dispatch</h3>
+        <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">
+          Select a hardware device and international currency, then click "Dispatch Drools Coordinator" to execute the forward-chaining rules.
+        </p>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="card text-center py-16">
+        <div class="spinner-large mx-auto mb-4"></div>
+        <h3 class="text-base font-semibold text-indigo-400">Firing Drools Rules in Working Memory</h3>
+        <p class="text-xs text-gray-400 mt-1">Matching WMEs against production agenda...</p>
+      </div>
+
+      <!-- Result Card -->
+      <div *ngIf="result" class="space-y-6">
+        <!-- Highlights Bar -->
+        <div class="card bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-slate-900 border-indigo-900/40">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <span class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Resolution Status</span>
+              <h3 class="text-xl font-bold text-white mt-0.5 flex items-center gap-2">
+                <span>{{ result.success ? '✅ Verified Pricing Achieved' : '❌ Resolution Failed' }}</span>
+              </h3>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="text-right">
+                <span class="text-xs text-gray-400 block">Rules Fired</span>
+                <span class="text-sm font-bold text-white">{{ result.rules_fired }} productions</span>
+              </div>
+              <div class="h-8 w-px bg-gray-700"></div>
+              <div class="text-right">
+                <span class="text-xs text-gray-400 block">Cycle Latency</span>
+                <span class="text-sm font-bold text-white">{{ executionDurationMs }} ms</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Final Answer Highlight -->
+          <div class="mt-4 p-4 rounded-lg bg-black/40 border border-gray-800">
+            <p class="text-xs font-mono text-gray-400 uppercase tracking-wider mb-1">Finalized Answer:</p>
+            <p class="text-base font-medium text-emerald-400 leading-relaxed">{{ result.final_answer }}</p>
+          </div>
+        </div>
+
+        <!-- Chronological ReAct Audit Trail -->
+        <div class="card">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <span>📜</span> ReAct Working Memory Audit Trail
+            </h3>
+            <span class="text-xs text-gray-400">Session: <code>{{ result.session_id }}</code></span>
+          </div>
+
+          <div class="space-y-4">
+            <div *ngFor="let step of result.audit_facts" class="audit-step">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="badge" [ngClass]="getKindClass(step.kind)">
+                  <span class="mr-1">{{ getKindIcon(step.kind) }}</span>
+                  Step {{ step.step }}: {{ step.kind }}
+                </span>
+              </div>
+              <div class="audit-content">
+                <code>{{ step.content }}</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
