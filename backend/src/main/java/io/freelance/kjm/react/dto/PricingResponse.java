@@ -19,6 +19,8 @@ public class PricingResponse implements Serializable {
     private String final_answer;
     private String status;
     private boolean cached;
+    private String knowledge_source;
+    private String query_hash;
     private int rules_fired;
     private List<AuditItemDto> audit_facts = new ArrayList<>();
 
@@ -95,6 +97,22 @@ public class PricingResponse implements Serializable {
 
     public void setCached(boolean cached) {
         this.cached = cached;
+    }
+
+    public String getKnowledge_source() {
+        return knowledge_source;
+    }
+
+    public void setKnowledge_source(String knowledge_source) {
+        this.knowledge_source = knowledge_source;
+    }
+
+    public String getQuery_hash() {
+        return query_hash;
+    }
+
+    public void setQuery_hash(String query_hash) {
+        this.query_hash = query_hash;
     }
 
     public int getRules_fired() {

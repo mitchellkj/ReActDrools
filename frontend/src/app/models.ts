@@ -43,6 +43,8 @@ export interface PricingResponse {
   final_answer: string;
   status: string;
   cached: boolean;
+  knowledge_source?: string;
+  query_hash?: string;
   rules_fired: number;
   audit_facts: AuditItem[];
 }

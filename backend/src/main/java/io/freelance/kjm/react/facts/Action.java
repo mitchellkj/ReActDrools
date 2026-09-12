@@ -1,59 +1,53 @@
 package io.freelance.kjm.react.facts;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Drools Working Memory Element representing a dispatched ReAct Action step.
+ * Drools Working Memory Element representing the selected tool name for a session.
  */
-public class Action implements Serializable {
+public class Action extends BaseReActFact {
     private static final long serialVersionUID = 1L;
 
     public static final String STATUS_PENDING = "PENDING";
     public static final String STATUS_EXECUTED = "EXECUTED";
     public static final String STATUS_FAILED = "FAILED";
 
-    private String sessionId;
-    private int step;
-    private String toolName;
+    private String name;
     private ActionInput actionInput;
     private String status = STATUS_PENDING;
-    private long timestamp = System.currentTimeMillis();
 
     public Action() {
+        super();
     }
 
-    public Action(String sessionId, int step, String toolName, ActionInput actionInput, String status) {
-        this.sessionId = sessionId;
-        this.step = step;
-        this.toolName = toolName;
+    public Action(String sessionId, Integer step, String name) {
+        super(sessionId, step);
+        this.name = name;
+        this.status = STATUS_PENDING;
+    }
+
+    public Action(String sessionId, Integer step, String name, ActionInput actionInput, String status) {
+        super(sessionId, step);
+        this.name = name;
         this.actionInput = actionInput;
         this.status = status;
-        this.timestamp = System.currentTimeMillis();
     }
 
-    public String getSessionId() {
-        return sessionId;
+    public String getName() {
+        return name;
     }
 
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public int getStep() {
-        return step;
-    }
-
-    public void setStep(int step) {
-        this.step = step;
-    }
-
+    // Alias for toolName compatibility
     public String getToolName() {
-        return toolName;
+        return name;
     }
 
     public void setToolName(String toolName) {
-        this.toolName = toolName;
+        this.name = toolName;
     }
 
     public ActionInput getActionInput() {
@@ -72,36 +66,27 @@ public class Action implements Serializable {
         this.status = status;
     }
 
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         Action action = (Action) o;
-        return step == action.step &&
-               Objects.equals(sessionId, action.sessionId) &&
-               Objects.equals(toolName, action.toolName) &&
+        return Objects.equals(name, action.name) &&
                Objects.equals(status, action.status);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(sessionId, step, toolName, status);
+        return Objects.hash(super.hashCode(), name, status);
     }
 
     @Override
     public String toString() {
         return "Action{" +
-                "sessionId='" + sessionId + '\'' +
-                ", step=" + step +
-                ", toolName='" + toolName + '\'' +
+                "sessionId='" + getSessionId() + '\'' +
+                ", step=" + getStep() +
+                ", name='" + name + '\'' +
                 ", actionInput=" + actionInput +
                 ", status='" + status + '\'' +
                 '}';

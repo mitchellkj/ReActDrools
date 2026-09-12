@@ -1,82 +1,61 @@
 package io.freelance.kjm.react.facts;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Drools Working Memory Element representing internal reasoning or plan formation.
+ * Drools Working Memory Element representing an agent's reasoning step for a session.
  */
-public class Thought implements Serializable {
+public class Thought extends BaseReActFact {
     private static final long serialVersionUID = 1L;
 
-    private String sessionId;
-    private int step;
-    private String content;
-    private long timestamp = System.currentTimeMillis();
+    private String text;
 
     public Thought() {
+        super();
     }
 
-    public Thought(String sessionId, int step, String content) {
-        this.sessionId = sessionId;
-        this.step = step;
-        this.content = content;
-        this.timestamp = System.currentTimeMillis();
+    public Thought(String sessionId, Integer step, String text) {
+        super(sessionId, step);
+        this.text = text;
     }
 
-    public String getSessionId() {
-        return sessionId;
+    public String getText() {
+        return text;
     }
 
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
+    public void setText(String text) {
+        this.text = text;
     }
 
-    public int getStep() {
-        return step;
-    }
-
-    public void setStep(int step) {
-        this.step = step;
-    }
-
+    // Alias for compatibility
     public String getContent() {
-        return content;
+        return text;
     }
 
     public void setContent(String content) {
-        this.content = content;
-    }
-
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
+        this.text = content;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         Thought thought = (Thought) o;
-        return step == thought.step &&
-               Objects.equals(sessionId, thought.sessionId) &&
-               Objects.equals(content, thought.content);
+        return Objects.equals(text, thought.text);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(sessionId, step, content);
+        return Objects.hash(super.hashCode(), text);
     }
 
     @Override
     public String toString() {
         return "Thought{" +
-                "sessionId='" + sessionId + '\'' +
-                ", step=" + step +
-                ", content='" + content + '\'' +
+                "sessionId='" + getSessionId() + '\'' +
+                ", step=" + getStep() +
+                ", text='" + text + '\'' +
                 '}';
     }
 }

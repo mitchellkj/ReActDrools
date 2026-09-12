@@ -1,81 +1,176 @@
-package rules
+package rules;
 
+import io.freelance.kjm.react.facts.BaseReActFact;
 import io.freelance.kjm.react.facts.Goal;
+import io.freelance.kjm.react.facts.Finished;
+import io.freelance.kjm.react.facts.Question;
+import io.freelance.kjm.react.facts.Thought;
 import io.freelance.kjm.react.facts.Action;
 import io.freelance.kjm.react.facts.ActionInput;
 import io.freelance.kjm.react.facts.Observation;
-import io.freelance.kjm.react.facts.Thought;
-import io.freelance.kjm.react.facts.Finished;
-import io.freelance.kjm.react.facts.Product;
-import io.freelance.kjm.react.facts.CurrencyExchange;
-import io.freelance.kjm.react.facts.ToolFact;
+import io.freelance.kjm.react.facts.FinalAnswer;
+import io.freelance.kjm.react.facts.LLMPrediction;
+import io.freelance.kjm.react.facts.StepTracker;
+import io.freelance.kjm.react.template.ReActTemplateBean;
+import io.freelance.kjm.react.template.ParsedReActResponse;
+import io.freelance.kjm.react.services.GeminiService;
+import io.freelance.kjm.react.services.ToolExecutionService;
+import io.freelance.kjm.react.storage.WorkingMemoryStore;
+import java.util.List;
 
-global io.freelance.kjm.react.services.ToolExecutionService toolService;
+global ReActTemplateBean templateBean;
+global GeminiService geminiService;
+global ToolExecutionService toolService;
+global WorkingMemoryStore wmStore;
 
 // =============================================================================
-// Rule 1: Initialize ReAct Goal
+// Rule 0: Load Cached Working Memory (Highest Salience: 200)
+// Fires on first query encounter (step 1) if persisted working memory exists.
+// Substitutes active sessionId on all materialized facts and preserves StepTracker.
 // =============================================================================
-rule "Initialize ReAct Goal"
+rule "Load Cached Working Memory"
+    salience 200
+    when
+        $g : Goal($sid : sessionId, goalType == Goal.REASON, step == 1)
+        $q : Question(sessionId == $sid, $qText : text)
+        eval(wmStore != null && wmStore.exists($qText))
+    then
+        System.out.println("[Drools DRL] >>> Materialized Working Memory Hit (salience 200) for query: " + $qText);
+        List cachedFacts = wmStore.load($qText, $sid);
+        for (Object factObj : cachedFacts) {
+            if (!(factObj instanceof Question) && !(factObj instanceof Goal)) {
+                insert(factObj);
+            }
+        }
+        modify($g) {
+            setGoalType(Goal.FINISHED)
+        };
+end
+
+// =============================================================================
+// Rule 1: Finished Fact Resolution (Salience 100)
+// Pushes termination logic into inference: immediately halts cycle upon resolution.
+// In the absence of a cache, persists newly deduced working memory to disk.
+// =============================================================================
+rule "Finished Fact Resolution"
     salience 100
     when
-        $g : Goal(status == Goal.STATUS_INIT, $prod : product, $sess : sessionId)
+        $f : Finished($sid : sessionId)
+        $g : Goal(sessionId == $sid, goalType != Goal.FINISHED)
+        $q : Question(sessionId == $sid, $qText : text)
     then
-        System.out.println("[Drools Rule: Init] Initializing ReAct loop for session: " + $sess);
-        insert(new Thought($sess, 0, "Initializing ReAct goal coordination for: " + $prod));
+        System.out.println("[Drools DRL] >>> Finished Rule Triggered (salience 100) for session " + $sid);
+        if (wmStore != null && !wmStore.exists($qText)) {
+            System.out.println("[Drools DRL] >>> Persisting newly deduced Working Memory to cache for query: " + $qText);
+            wmStore.save($qText, $sid, drools.getKieRuntime().getObjects());
+        }
         modify($g) {
-            setStatus(Goal.STATUS_NEED_BASE_PRICE)
+            setGoalType(Goal.FINISHED)
         };
 end
 
 // =============================================================================
-// Rule 2: Dispatch Search Action for Base Hardware Price
+// Rule 2: Max Iterations Reached (Salience 95)
+// Terminates loop if step count exceeds maximum iteration threshold.
 // =============================================================================
-rule "Dispatch Search Action for Base Hardware Price"
-    salience 90
+rule "Max Iterations Reached"
+    salience 95
     when
-        $g : Goal(status == Goal.STATUS_NEED_BASE_PRICE, $prod : product, $sess : sessionId)
+        $g : Goal($sid : sessionId, goalType == Goal.REASON)
+        $tracker : StepTracker(sessionId == $sid, currentStep > maxSteps, $currStep : currentStep)
     then
-        System.out.println("[Drools Rule: Need Base Price] Planning search action for product: " + $prod);
-        insert(new Thought($sess, 1, "I need to check retail search indices for starting MSRP of " + $prod + " in USD."));
-        insert(new Action($sess, 1, "duckduck", new ActionInput("current price of " + $prod + " in USD"), Action.STATUS_PENDING));
+        System.out.println("[Drools DRL] >>> Max Iterations Limit Reached (" + $currStep + ") for session " + $sid);
+        insert(new Finished($sid, $currStep, "Reached maximum iteration limit without final answer."));
         modify($g) {
-            setStatus(Goal.STATUS_AWAITING_SEARCH)
+            setGoalType(Goal.FINISHED)
         };
 end
 
 // =============================================================================
-// Rule 3: Process Search Observation and Plan Currency Conversion
+// Rule 3: Reason Production (Salience 50)
+// Scoped to session: builds scratchpad, formats prompt template, and invokes LLM.
 // =============================================================================
-rule "Process Search Observation and Plan Currency Conversion"
-    salience 80
+rule "Reason Production"
+    salience 50
     when
-        $g : Goal(status == Goal.STATUS_AWAITING_SEARCH, $sess : sessionId, $rate : exchangeRate, $curr : targetCurrency, $prod : product)
-        $obs : Observation(sessionId == $sess, toolName == "duckduck", $price : extractedValue != null)
+        $g : Goal($sid : sessionId, goalType == Goal.REASON)
+        $tracker : StepTracker(sessionId == $sid, currentStep <= maxSteps, $currStep : currentStep)
+        $q : Question(sessionId == $sid, $qText : text)
     then
-        System.out.println("[Drools Rule: Search Received] Base price resolved to: $" + $price);
-        insert(new Thought($sess, 2, "Observed base MSRP is $" + $price + " USD. Target currency is " + $curr + " at rate " + $rate + ". I must calculate: " + $price + " * " + $rate));
-        insert(new Action($sess, 2, "Calculator", new ActionInput($price + " * " + $rate), Action.STATUS_PENDING));
+        System.out.println("[Drools DRL] >>> Reason Production Triggered for session " + $sid + " (step " + $currStep + ")");
+
+        // 1. Build ReAct scratchpad from working memory history facts
+        String scratchpad = templateBean.buildScratchpad(drools.getKieRuntime().getObjects(), $sid, $currStep);
+
+        // 2. Compose full prompt using template bean
+        String prompt = templateBean.composePrompt(
+            toolService.getToolsDescription(),
+            toolService.getToolNames(),
+            $qText,
+            scratchpad
+        );
+
+        // 3. Invoke LLM remote backend
+        String predText = "";
+        try {
+            predText = geminiService.invoke(prompt);
+        } catch (Exception e) {
+            System.err.println("[Drools DRL] Gemini invocation error: " + e.getMessage());
+            predText = "Thought: LLM invocation failed: " + e.getMessage() + "\nFinal Answer: Error invoking LLM backend: " + e.getMessage();
+        }
+
+        // 4. Assert prediction fact into working memory and transition goal to Act
+        insert(new LLMPrediction($sid, $currStep, predText));
         modify($g) {
-            setStatus(Goal.STATUS_AWAITING_CONVERSION)
+            setGoalType(Goal.ACT)
         };
 end
 
 // =============================================================================
-// Rule 4: Conclude ReAct Goal with Final Converted Price
+// Rule 4: Act Production (Salience 50)
+// Scoped to session: parses prediction, dispatches tools, inserts observations.
 // =============================================================================
-rule "Conclude ReAct Goal with Final Converted Price"
-    salience 70
+rule "Act Production"
+    salience 50
     when
-        $g : Goal(status == Goal.STATUS_AWAITING_CONVERSION, $sess : sessionId, $prod : product, $curr : targetCurrency, $rate : exchangeRate)
-        $calcObs : Observation(sessionId == $sess, toolName == "Calculator", $converted : extractedValue != null)
-        $searchObs : Observation(sessionId == $sess, toolName == "duckduck", $basePrice : extractedValue != null)
+        $g : Goal($sid : sessionId, goalType == Goal.ACT)
+        $pred : LLMPrediction(sessionId == $sid, $predText : text, $predStep : step)
+        $tracker : StepTracker(sessionId == $sid, $currStep : currentStep)
     then
-        System.out.println("[Drools Rule: Finished] Formulating final answer: " + $converted + " " + $curr);
-        String answer = String.format("The current retail starting price for %s is $%.2f USD. At an exchange rate of %.4f, this equates to approximately %.2f %s.",
-                                      $prod, $basePrice, $rate, $converted, $curr);
-        insert(new Finished($sess, $prod, $basePrice, $curr, $rate, $converted, answer));
-        insert(new Thought($sess, 3, "Goal achieved. Formulated verified terminal pricing answer: " + answer));
-        modify($g) {
-            setStatus(Goal.STATUS_COMPLETED)
-        };
+        System.out.println("[Drools DRL] >>> Act Production Triggered for session " + $sid + " (step " + $currStep + ")");
+
+        // 1. Decompose/parse response using template bean
+        ParsedReActResponse parsed = templateBean.decomposeResponse($predText);
+
+        retract($pred);
+
+        if (parsed.isFinalAnswer()) {
+            if (parsed.getThought() != null && !parsed.getThought().isEmpty()) {
+                insert(new Thought($sid, $currStep, parsed.getThought()));
+            }
+            insert(new FinalAnswer($sid, $currStep, parsed.getFinalAnswer()));
+            insert(new Finished($sid, $currStep, parsed.getFinalAnswer()));
+            // Termination and cache persistence are handled declaratively by the
+            // higher-salience "Finished Fact Resolution" rule (salience 100).
+        } else {
+            if (parsed.getThought() != null && !parsed.getThought().isEmpty()) {
+                insert(new Thought($sid, $currStep, parsed.getThought()));
+            }
+            insert(new Action($sid, $currStep, parsed.getAction()));
+            insert(new ActionInput($sid, $currStep, parsed.getActionInput()));
+
+            // 2. Execute selected tool and assert observation
+            String obs = toolService.executeTool(parsed.getAction(), parsed.getActionInput());
+            insert(new Observation($sid, $currStep, obs));
+
+            // 3. Advance step tracker and loop back to Reason goal
+            int nextStep = $currStep + 1;
+            modify($tracker) {
+                setCurrentStep(nextStep)
+            };
+            modify($g) {
+                setGoalType(Goal.REASON),
+                setStep(nextStep)
+            };
+        }
 end

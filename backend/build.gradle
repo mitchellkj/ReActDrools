@@ -25,12 +25,24 @@ dependencies {
     // Jackson JSON Serializer
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
+    // Mathematical Expression Evaluator for Calculator Tool
+    implementation 'net.objecthunter:exp4j:0.4.8'
+
+    // Google Cloud Secret Manager (1:1 PyRete Parity)
+    implementation platform('com.google.cloud:libraries-bom:26.37.0')
+    implementation 'com.google.cloud:google-cloud-secretmanager'
+
     // Logging
     implementation 'org.slf4j:slf4j-api'
 
     // Testing
+    testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
+
+ext['junit-jupiter.version'] = '5.10.2'
 
 java {
     toolchain {

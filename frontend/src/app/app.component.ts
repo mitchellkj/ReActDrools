@@ -88,17 +88,26 @@ export class AppComponent implements OnInit {
     }
   }
 
+  get synthesizedQuery(): string {
+    const match = this.currencies.find(c => c.code === this.selectedCurrency);
+    const currName = match?.name || this.selectedCurrency;
+    const rateStr = this.exchangeRate.toString();
+    return `What is the total retail purchase price (MSRP) of a new entry-level ${this.selectedProduct} in USD? Do not use monthly financing. How much would it cost in ${currName} (${this.selectedCurrency}) if the exchange rate is ${rateStr} ${this.selectedCurrency} for 1 USD? Use the Calculator tool to do the conversion. Do not do it yourself.`;
+  }
+
   executeCoordination(): void {
     this.loading = true;
     this.error = null;
     this.result = null;
     const startTime = performance.now();
 
+    const match = this.currencies.find(c => c.code === this.selectedCurrency);
     const request = {
       product: this.selectedProduct,
       currency_code: this.selectedCurrency,
+      currency_name: match?.name || this.selectedCurrency,
       exchange_rate: this.exchangeRate,
-      custom_query: `What is the price of ${this.selectedProduct} in ${this.selectedCurrency}?`
+      custom_query: this.synthesizedQuery
     };
 
     this.pricingService.computePricing(request).subscribe({

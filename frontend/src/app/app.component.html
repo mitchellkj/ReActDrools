@@ -67,6 +67,16 @@
           </div>
         </div>
 
+        <!-- Guard-railed Query Preview -->
+        <div class="space-y-2 mb-4">
+          <label class="block text-xs font-medium uppercase tracking-wider text-gray-400">
+            Synthesized Question (Guard-railed)
+          </label>
+          <div class="text-xs text-indigo-300 font-mono leading-relaxed bg-black/50 p-3 rounded-lg border border-gray-800">
+            {{ synthesizedQuery }}
+          </div>
+        </div>
+
         <!-- Action Button -->
         <button (click)="executeCoordination()" [disabled]="loading" class="btn-primary w-full mt-2">
           <span *ngIf="loading" class="spinner"></span>
@@ -125,6 +135,14 @@
               <h3 class="text-xl font-bold text-white mt-0.5 flex items-center gap-2">
                 <span>{{ result.success ? '✅ Verified Pricing Achieved' : '❌ Resolution Failed' }}</span>
               </h3>
+              <div class="mt-1 flex items-center gap-2">
+                <span class="badge" [ngClass]="result.cached ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-600/40' : 'bg-blue-950/80 text-blue-300 border border-blue-600/40'">
+                  <span>{{ result.cached ? '⚡ Materialized Working Memory (Cached)' : '🌐 Live Gemini LLM Inference' }}</span>
+                </span>
+                <span *ngIf="result.query_hash" class="text-xs font-mono text-gray-400">
+                  SHA: {{ result.query_hash | slice:0:10 }}...
+                </span>
+              </div>
             </div>
             <div class="flex items-center gap-3">
               <div class="text-right">
@@ -139,8 +157,14 @@
             </div>
           </div>
 
+          <!-- Evaluated Query Context -->
+          <div class="mt-4 p-3 rounded-lg bg-black/30 border border-gray-800/60">
+            <p class="text-xs font-mono text-gray-400 uppercase tracking-wider mb-0.5">Evaluated Query:</p>
+            <p class="text-xs text-gray-300 font-mono leading-relaxed">{{ result.query }}</p>
+          </div>
+
           <!-- Final Answer Highlight -->
-          <div class="mt-4 p-4 rounded-lg bg-black/40 border border-gray-800">
+          <div class="mt-3 p-4 rounded-lg bg-black/40 border border-gray-800">
             <p class="text-xs font-mono text-gray-400 uppercase tracking-wider mb-1">Finalized Answer:</p>
             <p class="text-base font-medium text-emerald-400 leading-relaxed">{{ result.final_answer }}</p>
           </div>

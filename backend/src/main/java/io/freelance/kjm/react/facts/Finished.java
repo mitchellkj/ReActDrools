@@ -1,44 +1,42 @@
 package io.freelance.kjm.react.facts;
 
-import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Drools Working Memory Element representing the successful terminal resolution of the ReAct session.
+ * Fact indicating coordinator execution for a given session has completed.
  */
-public class Finished implements Serializable {
+public class Finished extends BaseReActFact {
     private static final long serialVersionUID = 1L;
 
-    private String sessionId;
     private String product;
     private Double basePriceUsd;
     private String targetCurrency;
     private Double exchangeRate;
     private Double convertedPrice;
     private String finalAnswer;
-    private long timestamp = System.currentTimeMillis();
 
     public Finished() {
+        super();
+    }
+
+    public Finished(String sessionId, Integer step) {
+        super(sessionId, step);
+    }
+
+    public Finished(String sessionId, Integer step, String finalAnswer) {
+        super(sessionId, step);
+        this.finalAnswer = finalAnswer;
     }
 
     public Finished(String sessionId, String product, Double basePriceUsd, String targetCurrency,
                     Double exchangeRate, Double convertedPrice, String finalAnswer) {
-        this.sessionId = sessionId;
+        super(sessionId, 4);
         this.product = product;
         this.basePriceUsd = basePriceUsd;
         this.targetCurrency = targetCurrency;
         this.exchangeRate = exchangeRate;
         this.convertedPrice = convertedPrice;
         this.finalAnswer = finalAnswer;
-        this.timestamp = System.currentTimeMillis();
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
     }
 
     public String getProduct() {
@@ -89,39 +87,25 @@ public class Finished implements Serializable {
         this.finalAnswer = finalAnswer;
     }
 
-    public long getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(long timestamp) {
-        this.timestamp = timestamp;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        if (!super.equals(o)) return false;
         Finished finished = (Finished) o;
-        return Objects.equals(sessionId, finished.sessionId) &&
-               Objects.equals(product, finished.product) &&
-               Objects.equals(targetCurrency, finished.targetCurrency) &&
-               Objects.equals(convertedPrice, finished.convertedPrice);
+        return Objects.equals(finalAnswer, finished.finalAnswer);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(sessionId, product, targetCurrency, convertedPrice);
+        return Objects.hash(super.hashCode(), finalAnswer);
     }
 
     @Override
     public String toString() {
         return "Finished{" +
-                "sessionId='" + sessionId + '\'' +
-                ", product='" + product + '\'' +
-                ", basePriceUsd=" + basePriceUsd +
-                ", targetCurrency='" + targetCurrency + '\'' +
-                ", exchangeRate=" + exchangeRate +
-                ", convertedPrice=" + convertedPrice +
+                "sessionId='" + getSessionId() + '\'' +
+                ", step=" + getStep() +
                 ", finalAnswer='" + finalAnswer + '\'' +
                 '}';
     }
